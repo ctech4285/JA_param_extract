@@ -1,0 +1,155 @@
+
+%% JA parameter extraction 
+
+%sp = 1; % starting index for logging
+
+% load referenc BH curve, single value per x 
+
+load AlNiCo_5/AlNiCo_5_Hysterises_loop_single_value.mat;
+x = Data003(:,1);
+y = Data003(:,2);
+Ref_x = -200000:1000:200000;
+
+clip_min = min(Data003(:,1));
+clip_max = max(Data003(:,1));
+% interpolate
+Ref_y = interp1(x,y,Ref_x,'pchip');
+
+% graph
+%hold on 
+plot(Ref_x,Ref_y);
+
+
+% parameters
+Ip = (abs(clip_min)+clip_max) / 605; % clips Hmax to sample data 
+%a = zeros(5,7);
+
+% AlNiCo 5 best fit square error 
+% [4.76258753832144e-05,1.08137459383704,31510.3190144165,0.125292584870499,83177.9056903517,0.0622798260003811,11.9530626244814]
+% area error
+% [5.36717511759392e-05,1.10348810058925,31638.8992831305,0.111234366063733,83408.1281682983,0.0623256691630854,39.0779394007113]
+
+%a(1,:)= [4.76258753832144e-05 1.08137459383704 31510.3190144165 0.125292584870499 83177.9056903517 0.0622798260003811 11.9530626244814]; % intial values
+% best_res = zeros(5,7);
+
+% dBdH0  % Anhysteretic B-H gradient when H is zero
+% B1     % Flux density point on anhysteretic B-H curve
+% H1     % Corresponding field strength
+% c      % Coefficient for reversible magnetization, c
+% K      % Bulk coupling coefficient, K
+% alpha  % Inter-domain coupling factor
+% error  % 
+
+for ix = 1:10
+    
+    ix
+    
+    % initilize population of 4 parameter sets, permutate randomly 0.95 -> 1.05 
+    for i = 2:5
+        a(i,:)= [(((rand()/10)+0.95)*a(1,1)) (((rand()/10)+0.95)*a(1,2)) (((rand()/10)+0.95)*a(1,3)) (((rand()/10)+0.95)*a(1,4)) (((rand()/10)+0.95)*a(1,5)) (((rand()/10)+0.95)*a(1,6)) 1000]; % intial values
+    end
+    for tb = 1:5
+        
+        dBdH0 = a(tb,1);  % Anhysteretic B-H gradient when H is zero
+        B1 = a(tb,2);     % Flux density point on anhysteretic B-H curve
+        H1 = a(tb,3);     % Corresponding field strength
+        c  = a(tb,4);     % Coefficient for reversible magnetization, c
+        K  = a(tb,5);     % Bulk coupling coefficient, K
+        alpha = a(tb,6);  % Inter-domain coupling factor
+        m = 0;
+        try
+            sim('elec_inductor_hysteresis')
+        catch
+            m = 10;
+        end
+        pause(0)
+        if m == 0
+            Bnom = simlog_elec_inductor_hysteresis.Nonlinear_Inductor.inductor.B.series.values;
+            Hnom = simlog_elec_inductor_hysteresis.Nonlinear_Inductor.inductor.H.series.values;
+
+            H = flipud(Hnom);
+            B = flipud(Bnom);
+
+            % extract upper part of loop, single y value for each x
+            % clip data (-200k:200k) A/m
+            H_first_index = find(H <= clip_min, 1);
+            H_last_index  = find(H >=  clip_max, 1);
+            H = H(H_first_index : H_last_index);
+            B = B(H_first_index : H_last_index);
+            H_first_index = find(H >= clip_min, 1);
+            H = H(H_first_index : end);
+            B = B(H_first_index : end);
+     
+            N_x = -200000:1000:200000;
+
+            % interpolate
+            N_y = interp1(H,B,N_x,'pchip');
+            % plot
+            hold on
+            plot(N_x,N_y,'LineWidth',1)
+            hold off
+
+            % error function
+            
+            % square error function
+            error = ((Ref_y-N_y).*(Ref_y-N_y));
+            
+            % area error function 
+            % error = abs(Ref_y-N_y);
+           
+            % plot error
+            hold on 
+            plot(N_x,abs(error),'LineWidth',2)
+            hold off
+
+            % store error in last colum of a
+            a(tb,7) =  sum(abs(error));
+            
+            pause(0)
+        end
+    end
+    
+    % find the lowest error row, t
+    [f,t] = min(a(:,7));
+    
+    % copy lowest error parameter set into a(1:0)
+    a(1,:)=a(t,:);
+    a(:,7);
+    
+    % keep a record of best performers 
+    best_res(sp,:)=a(1,:);
+    
+    % index 
+    sp = sp+1;
+    % 
+    a(1,7)
+end
+
+% plot best fit and reference 
+
+dBdH0 = a(1,1);  % Anhysteretic B-H gradient when H is zero
+B1 = a(1,2);     % Flux density point on anhysteretic B-H curve
+H1 = a(1,3);     % Corresponding field strength
+c  = a(1,4);     % Coefficient for reversible magnetization, c
+K  = a(1,5);     % Bulk coupling coefficient, K
+alpha = a(1,6);  % Inter-domain coupling factor
+
+sim('elec_inductor_hysteresis')
+
+Bnom = simlog_elec_inductor_hysteresis.Nonlinear_Inductor.inductor.B.series.values;
+Hnom = simlog_elec_inductor_hysteresis.Nonlinear_Inductor.inductor.H.series.values;
+
+simlog_t = simlog_elec_inductor_hysteresis.Nonlinear_Inductor.inductor.B.series.time;
+t_inds_nom = find(simlog_t>=(1/60));
+    
+plot(Hnom(t_inds_nom),Bnom(t_inds_nom),'LineWidth',1)
+hold off
+ylabel('B (T)')
+title('B-H Curve')
+
+load AlNiCo_5/AlNiCo_5_Hysterises_loop_xy.mat;
+hold on
+plot(AlNiCo_5_Hysterises_loop_xy(:,1),AlNiCo_5_Hysterises_loop_xy(:,2));
+hold off 
+
+
