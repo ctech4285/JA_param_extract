@@ -19,11 +19,17 @@ sp = 1; % starting index for logging
 init parameters in order 
 
 % dBdH0  % Anhysteretic B-H gradient when H is zero
+
 % B1     % Flux density point on anhysteretic B-H curve
+
 % H1     % Corresponding field strength
+
 % c      % Coefficient for reversible magnetization, c
+
 % K      % Bulk coupling coefficient, K
+
 % alpha  % Inter-domain coupling factor
+
 % error  % 
 
 This here is a good fit for AlNiCo 5
