@@ -1,6 +1,6 @@
 Jiles-Artherton parameter extract
 =================================
-
+ * Buggy, not recomended without good knowlage of matlab 
 ### Prerequisites
 
 * Matlab
